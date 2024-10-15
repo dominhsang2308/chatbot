@@ -1,8 +1,10 @@
 import sys
+import webbrowser
 import speech_recognition as sr
 import os
 import requests
 from wit import Wit
+import pyttsx3
 
 
 
@@ -38,6 +40,7 @@ def msg_to_wit(text):
     response = requests.get(msg_url, headers=headers)
     if response.status_code == 200:
         data = response.json()
+        print('Phản hồi từ Wit', data)
         return data
     else:
         print(f'Lỗi khi gửi yêu cầu {response.status_code}')
@@ -51,6 +54,16 @@ def process_wit_response(response):
             return intents_name
     return "unknow"
 
+def extract_keyword(wit_response):
+    entities = wit_response.get('entities', {})
+    if 'keyword:keyword' in entities:
+        return entities['keyword:keyword'][0]['value']
+    return None
+
+def search_on_google(query):
+    search_url = f'https://www.google.com/search?q={query}'
+    print(f'Tìm kiếm trên google: {search_url}')
+    webbrowser.open_new_tab(search_url)
 def handle_intent(intent):
     if intent == "open_youtube":
         print('Mở youtube bằng chrome')
@@ -70,14 +83,19 @@ def main():
     while True:
         print('Đang lắng nghe : ...')
         command = recognize_speech()
-       
-        
         if command:
-            
             wit_response = msg_to_wit(command)
             intent = process_wit_response(wit_response)
-            print(f'Intent nhận diện {intent}')
-            handle_intent(intent)
+            keyword = extract_keyword(wit_response)
+            if keyword:
+                print(f'Từ khóa tìm kiếm {keyword}')
+                search_on_google(command)
+            elif intent:
+                print('Tìm thấy từ khóa từ intent')
+                handle_intent(intent)
+            else:
+                print(f'Không tìm thấy {keyword}')
+            
             
 
 if __name__ == "__main__":
